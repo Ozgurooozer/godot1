@@ -32,6 +32,14 @@ func _on_damage_requested(entity_id: StringName, amount: float) -> void:
 	# Log for debug
 	print("[CombatDomain] Processing damage for %s: %f -> %f" % [entity_id, amount, final_damage])
 	
+	# VFX/SFX Triggering
+	var entity = GameManager.instance.entity_registry.get_entity(entity_id)
+	if entity:
+		var vfx_pos = entity.global_position + Vector3.UP * 1.0 # Hit center
+		GameManager.instance.vfx_manager.spawn_hit_vfx(vfx_pos)
+		# Audio trigger via EventBus (assuming a default hit sound for now)
+		# EventBus.infra_audio_play_sfx.emit(hit_sound_resource, vfx_pos)
+	
 	# Damage is then applied via RunDomain which updates RunState
 	# (In this architecture, RunDomain is the one that actually writes to RunState)
 	# But for simplicity, we let RunDomain handle the health modification

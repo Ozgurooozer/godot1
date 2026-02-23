@@ -19,6 +19,8 @@ var entity_registry: Node
 var dice_domain: Node
 var combat_domain: Node
 var stored_dice_system: Node
+var vfx_manager: Node
+var audio_manager: Node
 
 func _ready() -> void:
 	instance = self
@@ -33,6 +35,8 @@ func _bootstrap() -> void:
 	dice_domain = _init_system("DiceDomain", load("res://scripts/domains/dice_domain.gd"))
 	combat_domain = _init_system("CombatDomain", load("res://scripts/domains/combat_domain.gd"))
 	stored_dice_system = _init_system("StoredDiceSystem", load("res://scripts/managers/stored_dice_system.gd"))
+	vfx_manager = _init_system("VFXManager", load("res://scripts/managers/vfx_manager.gd"))
+	audio_manager = _init_system("AudioManager", load("res://autoloads/audio_manager.gd"))
 	
 	EventBus.ui_scene_ready.connect(_on_ui_ready)
 
