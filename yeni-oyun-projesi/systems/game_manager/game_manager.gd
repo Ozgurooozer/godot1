@@ -1,63 +1,56 @@
 class_name GameManager
 extends Node
 
+## v5.0 GameManager - The Orchestrator
+## Responsibility: Bootstrap, Dependency Wiring, Scene Lifecycle
+## Constraint: Max 150 lines, no gameplay logic.
+
+enum GameState { MAIN_MENU, HUB, TRANSITIONING, IN_ROOM, PAUSED, GAME_OVER, RUN_COMPLETE }
+enum GameMode  { MODE_2D, MODE_3D }
+
+static var instance: GameManager
+
+var current_state: GameState = GameState.MAIN_MENU
+var current_mode: GameMode  = GameMode.MODE_2D
+
+# Domain references - Wired but not owned
 var run_domain: RunDomain
+var entity_registry: EntityRegistry
+var dice_domain: DiceDomain
+var combat_domain: CombatDomain
+var stored_dice_system: StoredDiceSystem
 
-func _init():
-	run_domain = RunDomain.new()
+func _ready() -> void:
+	instance = self
+	_bootstrap()
 
-# ============================================================
-# GameManager
-# Ultimate authority over run lifecycle.
-# No RNG ownership.
-# No RunState access.
-# No gameplay logic.
-# ============================================================
+func _bootstrap() -> void:
+	print("[GameManager] Bootstrapping v5.0...")
+	
+	# Instantiate and wire domains
+	run_domain = _init_domain("RunDomain", RunDomain)
+	entity_registry = _init_domain("EntityRegistry", EntityRegistry)
+	dice_domain = _init_domain("DiceDomain", DiceDomain)
+	combat_domain = _init_domain("CombatDomain", CombatDomain)
+	stored_dice_system = _init_domain("StoredDiceSystem", StoredDiceSystem)
+	
+	EventBus.ui_scene_ready.connect(_on_ui_ready)
+
+func _init_domain(domain_name: String, domain_class: Object) -> Node:
+	var domain = get_node_or_null(domain_name)
+	if not domain:
+		domain = domain_class.new()
+		domain.name = domain_name
+		add_child(domain)
+	return domain
 
 func start_new_run() -> void:
 	var seed: int = _generate_root_seed()
-	assert(seed != 0, "Generated root seed must not be zero.")
-	
-	var payload: RunStartPayload = RunStartPayload.new(seed)
-	EventBus.run_started.emit(payload)
-
-func end_run() -> void:
-	EventBus.run_ended.emit()
-
-# ============================================================
-# Private
-# ============================================================
+	EventBus.run_started.emit(seed)
+	current_state = GameState.IN_ROOM
 
 func _generate_root_seed() -> int:
-	var unix_time: int = Time.get_unix_time_from_system()
-	var ticks_usec: int = Time.get_ticks_usec()
-	
-	# Combine using bitwise mixing to reduce collision probability
-	var mixed: int = unix_time ^ (ticks_usec << 13)
-	
-	# Ensure non-zero (avoid invalid seed)
-	if mixed == 0:
-		mixed = 1
-	
-	return mixed
+	return int(Time.get_unix_time_from_system()) ^ Time.get_ticks_usec()
 
-func calculate_final_damage(base_damage: float) -> float:
-    var run_state := run_domain.run_state
-    
-    var level_mod_pct := 0.0
-    var combat_mod_pct := 0.0
-    var boon_mod_pct := run_state.get_total_modifier(StatType.DAMAGE_PERCENT)
-    
-    if run_state.active_level_modifier:
-        level_mod_pct = run_state.active_level_modifier.damage_modifier_pct
-        
-    if run_state.active_combat_modifier:
-        combat_mod_pct = run_state.active_combat_modifier.damage_modifier_pct
-        
-    # Tüm yüzdeler TOPLANIR (Additive)
-    var total_pct_modifier := level_mod_pct + combat_mod_pct + boon_mod_pct
-    
-    # Base ile çarpılır. max() ile hasarın negatife veya 0'a düşmesi (bug) engellenir.
-    var final_damage := base_damage * maxf(0.1, 1.0 + total_pct_modifier)
-    
-    return final_damage
+func _on_ui_ready() -> void:
+	print("[GameManager] UI Ready, state: ", current_state)

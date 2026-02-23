@@ -1,124 +1,92 @@
 class_name DiceDomain
 extends Node
 
-# ============================================================
-# DiceDomain - EXCLUSIVE RNG OWNER + CATEGORY GENERATOR
-# The ONLY class in the entire project allowed to use RandomNumberGenerator.
-# Responsibilities:
-#   1. Roll d20 (deterministic per stream)
-#   2. Convert raw_value → RollCategory
-#   3. Generate RunModifier resource based on category
-#   4. Emit dice_roll_result with category + modifier
-# 
-# DiceDomain does NOT:
-#   - Calculate final numeric results
-#   - Apply modifiers to gameplay
-#   - Store state
-#   - Perform combat calculations
-# ============================================================
-
-# Private RNG instances - ephemeral state only
-var _level_rng: RandomNumberGenerator
-var _combat_rng: RandomNumberGenerator
-var _loot_rng: RandomNumberGenerator
-var _stored_dice_rng: RandomNumberGenerator
+## v5.0 DiceDomain - Manages Weighted Rolls & Modifier Generation
+## Responsibility: roll_d20(), _resolve_category(), generate_modifier().
+## Constraint: Uses GameRNG (randi/randf), no internal state storage.
 
 func _ready() -> void:
-	# Connect to EventBus signals
-	EventBus.run_started.connect(_on_run_started)
 	EventBus.dice_roll_requested.connect(_on_dice_roll_requested)
 
-func _on_run_started(payload: RunStartPayload) -> void:
-	assert(payload != null, "RunStartPayload cannot be null.")
-	assert(payload.root_seed != 0, "Root seed cannot be zero.")
-	
-	# Initialize RNG instances
-	_level_rng = RandomNumberGenerator.new()
-	_combat_rng = RandomNumberGenerator.new()
-	_loot_rng = RandomNumberGenerator.new()
-	_stored_dice_rng = RandomNumberGenerator.new()
-	
-	# Hash-based seed derivation for strong isolation
-	_level_rng.seed = hash(str(payload.root_seed) + "level")
-	_combat_rng.seed = hash(str(payload.root_seed) + "combat")
-	_loot_rng.seed = hash(str(payload.root_seed) + "loot")
-	_stored_dice_rng.seed = hash(str(payload.root_seed) + "stored_dice")
+func _on_dice_roll_requested(context: DiceContext) -> void:
+	roll_for_context(context)
 
-func _on_dice_roll_requested(payload: DiceRollRequestPayload) -> void:
-	assert(payload != null, "DiceRollRequestPayload cannot be null.")
-	assert(_level_rng != null, "RNGs not initialized! Run must be started first.")
+func roll_for_context(context: DiceContext) -> DiceRollResult:
+	var raw := _roll_d20()
+	var cat := _resolve_category(raw, context.luck_value)
+	var mod := _pick_modifier(cat, context.context_type)
 	
-	var roll: int = 0
+	var result := DiceRollResult.new()
+	result.raw_roll = raw
+	result.category = cat
+	result.modifier = mod
+	result.context = context
 	
-	# Exhaustive match on DiceStream enum
-	match payload.stream:
-		GameGlobals.DiceStream.LEVEL:
-			roll = _level_rng.randi_range(1, 20)
-		GameGlobals.DiceStream.COMBAT:
-			roll = _combat_rng.randi_range(1, 20)
-		GameGlobals.DiceStream.LOOT:
-			roll = _loot_rng.randi_range(1, 20)
-		GameGlobals.DiceStream.STORED_DICE:
-			roll = _stored_dice_rng.randi_range(1, 20)
-		_:
-			push_error("Unknown DiceStream!")
-			return
+	print("[DiceDomain] Rolled %d, Category: %d, Modifier: %s" % [raw, cat, mod.name])
 	
-	# Convert raw roll to category
-	var category: GameGlobals.RollCategory = _roll_to_category(roll)
-	
-	# Generate RunModifier resource based on category
-	var modifier: RunModifier = _generate_modifier(category)
-	
-	# Create result payload and emit
-	var result_payload: DiceRollResultPayload = DiceRollResultPayload.new(
-		payload.stream,
-		roll,
-		category,
-		modifier
-	)
-	
-	EventBus.dice_roll_result.emit(result_payload)
+	EventBus.dice_roll_completed.emit(result)
+	EventBus.dice_modifier_generated.emit(mod)
+	return result
 
-# ============================================================
-# Private: Category Mapping
-# ============================================================
+func _roll_d20() -> int:
+	return (randi() % 20) + 1
 
-func _roll_to_category(roll: int) -> GameGlobals.RollCategory:
-	# PLACEHOLDER: Will be replaced with your mapping strategy
-	# Current simple mapping:
-	if roll == 1:
-		return GameGlobals.RollCategory.DISASTER
-	elif roll >= 2 and roll <= 7:
-		return GameGlobals.RollCategory.BAD
-	elif roll >= 8 and roll <= 13:
-		return GameGlobals.RollCategory.NEUTRAL
-	elif roll >= 14 and roll <= 19:
-		return GameGlobals.RollCategory.GOOD
-	elif roll == 20:
-		return GameGlobals.RollCategory.JACKPOT
-	else:
-		push_error("Invalid roll value: %d" % roll)
-		return GameGlobals.RollCategory.NEUTRAL
+func _resolve_category(_roll: int, luck: float) -> int:
+	# v5.0 Formula: Luck shifts weights, doesn't change raw value directly
+	var weights := _get_weights(luck)
+	# Weights: [MajNeg:0, MinNeg:1, Neu:2, MinPos:3, MajPos:4]
+	
+	var total_weight := 0.0
+	for w in weights:
+		total_weight += w
+	
+	var r := randf() * total_weight
+	var cumulative := 0.0
+	for i in range(weights.size()):
+		cumulative += weights[i]
+		if r <= cumulative:
+			return i
+	
+	return 2 # Default to NEUTRAL
 
-# ============================================================
-# Private: Modifier Generation
-# ============================================================
+func _get_weights(luck: float) -> Array[float]:
+	# v5.0 luck_shift = luck_stat * 0.6
+	var shift := luck * 0.6
+	return [
+		maxf(2.0, 20.0 - shift * 0.7), # MAJOR_NEG (Base 20)
+		maxf(5.0, 20.0 - shift * 0.3), # MINOR_NEG (Base 20)
+		10.0,                          # NEUTRAL (Base 10)
+		25.0 + shift * 0.4,            # MINOR_POS (Base 25)
+		25.0 + shift * 0.6             # MAJOR_POS (Base 25)
+	]
 
-func _generate_modifier(category: GameGlobals.RollCategory) -> RunModifier:
-	# PLACEHOLDER: Will be replaced with your generation strategy
-	# Current simple mapping:
+func _pick_modifier(category: int, _context_type: int) -> RunModifier:
+	# Modifier Table (Simplified for Sprint 1/4 transition)
+	# v5.0 Rule: Modifier impact ±15-25%
+	var mod := RunModifier.new()
 	match category:
-		GameGlobals.RollCategory.DISASTER:
-			return RunModifier.create(0.5, 1.5, 0.5, "Disaster: Weak damage, tough enemies, poor loot")
-		GameGlobals.RollCategory.BAD:
-			return RunModifier.create(0.8, 1.2, 0.8, "Bad: Reduced effectiveness")
-		GameGlobals.RollCategory.NEUTRAL:
-			return RunModifier.create(1.0, 1.0, 1.0, "Neutral: Standard run")
-		GameGlobals.RollCategory.GOOD:
-			return RunModifier.create(1.2, 0.8, 1.2, "Good: Enhanced effectiveness")
-		GameGlobals.RollCategory.JACKPOT:
-			return RunModifier.create(1.5, 0.5, 1.5, "Jackpot: Strong damage, weak enemies, great loot!")
-		_:
-			push_error("Unknown RollCategory!")
-			return RunModifier.create(1.0, 1.0, 1.0, "Error: Default modifier")
+		0: # MAJOR_NEG
+			mod.name = "Dark Omen"
+			mod.damage_bonus = -0.20
+			mod.description = "-20% Damage, +15% Enemy Damage"
+			mod.enemy_hp_multiplier = 1.15
+		1: # MINOR_NEG
+			mod.name = "Cursed Path"
+			mod.damage_bonus = -0.10
+			mod.description = "-10% Gold Gain, +10% Enemy HP"
+			mod.gold_gain_bonus = -0.10
+			mod.enemy_hp_multiplier = 1.10
+		2: # NEUTRAL
+			mod.name = "Steady Hand"
+			mod.damage_bonus = 0.0
+			mod.description = "No Effect"
+		3: # MINOR_POS
+			mod.name = "Sharp Eye"
+			mod.damage_bonus = 0.10
+			mod.description = "+10% Crit, +8% Damage"
+		4: # MAJOR_POS
+			mod.name = "War Fury"
+			mod.damage_bonus = 0.20
+			mod.description = "+20% Damage, +15% Attack Speed"
+			mod.attack_speed_bonus = 0.15
+	return mod
