@@ -1,10 +1,10 @@
 extends Node
 
-## v5.0 Integration Test Script
+## v5.0 Clean Version Integration Test Script
 ## Responsibility: Verify core flow: Start -> Roll -> Damage -> UI.
 
 func _ready() -> void:
-	print("--- v5.0 Integration Test Starting ---")
+	print("--- v5.0 Clean Version Integration Test Starting ---")
 	
 	# 1. Bootstrap check
 	if not GameManager.instance:
@@ -15,18 +15,20 @@ func _ready() -> void:
 	GameManager.instance.start_new_run()
 	
 	# 3. Dice Roll Test
-	var context := DiceContext.new()
-	context.context_type = DiceContext.ContextType.COMBAT_START
+	var context_class = load("res://scripts/resources/dice_context.gd")
+	var context = context_class.new()
+	context.context_type = 1 # COMBAT_START
 	context.luck_value = 5.0
 	GameManager.instance.dice_domain.roll_for_context(context)
 	
 	# 4. Damage Calculation Test
-	var base_dmg := 10.0
-	var final_dmg := GameManager.instance.combat_domain.calculate_damage(base_dmg, &"player")
+	var base_dmg: float = 10.0
+	var final_dmg: float = GameManager.instance.combat_domain.calculate_damage(base_dmg, &"player")
 	print("[Test] Base Damage: %f, Final Damage with Modifiers: %f" % [base_dmg, final_dmg])
 	
 	# 5. Health Component Mirror Test
-	var health_comp := HealthComponent.new()
+	var health_comp_class = load("res://scripts/components/health_component.gd")
+	var health_comp = health_comp_class.new()
 	health_comp.owner_id = &"player"
 	add_child(health_comp)
 	
@@ -36,4 +38,4 @@ func _ready() -> void:
 	# 6. Stored Dice Test
 	GameManager.instance.stored_dice_system.try_drop_dice(10.0)
 	
-	print("--- v5.0 Integration Test Completed ---")
+	print("--- v5.0 Clean Version Integration Test Completed ---")

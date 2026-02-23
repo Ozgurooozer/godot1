@@ -28,3 +28,16 @@ func _on_modifier_generated(modifier: RunModifier) -> void:
 	# For simplicity, we assume the latest generated modifier is applied
 	run_state.active_combat_modifier = modifier
 	EventBus.run_modifier_applied.emit(modifier)
+
+func end_run() -> void:
+	# Update meta progression via SaveSystem
+	# Assuming SaveSystem is an Autoload as per v5.0
+	var save_sys = get_node("/root/SaveSystem")
+	if save_sys:
+		var meta = save_sys.load_meta()
+		# Logic for meta updates...
+		save_sys.save_meta(meta)
+		save_sys.delete_run()
+	
+	run_state = null
+	EventBus.run_ended.emit({})

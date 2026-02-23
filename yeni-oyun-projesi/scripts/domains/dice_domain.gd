@@ -8,15 +8,15 @@ extends Node
 func _ready() -> void:
 	EventBus.dice_roll_requested.connect(_on_dice_roll_requested)
 
-func _on_dice_roll_requested(context: DiceContext) -> void:
+func _on_dice_roll_requested(context: Resource) -> void:
 	roll_for_context(context)
 
-func roll_for_context(context: DiceContext) -> DiceRollResult:
-	var raw := _roll_d20()
-	var cat := _resolve_category(raw, context.luck_value)
-	var mod := _pick_modifier(cat, context.context_type)
+func roll_for_context(context: Resource) -> Resource:
+	var raw: int = _roll_d20()
+	var cat: int = _resolve_category(raw, context.luck_value)
+	var mod: RunModifier = _pick_modifier(cat, context.context_type)
 	
-	var result := DiceRollResult.new()
+	var result: DiceRollResult = load("res://scripts/resources/dice_roll_result.gd").new()
 	result.raw_roll = raw
 	result.category = cat
 	result.modifier = mod
@@ -33,15 +33,15 @@ func _roll_d20() -> int:
 
 func _resolve_category(_roll: int, luck: float) -> int:
 	# v5.0 Formula: Luck shifts weights, doesn't change raw value directly
-	var weights := _get_weights(luck)
+	var weights: Array[float] = _get_weights(luck)
 	# Weights: [MajNeg:0, MinNeg:1, Neu:2, MinPos:3, MajPos:4]
 	
-	var total_weight := 0.0
+	var total_weight: float = 0.0
 	for w in weights:
 		total_weight += w
 	
-	var r := randf() * total_weight
-	var cumulative := 0.0
+	var r: float = randf() * total_weight
+	var cumulative: float = 0.0
 	for i in range(weights.size()):
 		cumulative += weights[i]
 		if r <= cumulative:
@@ -51,30 +51,31 @@ func _resolve_category(_roll: int, luck: float) -> int:
 
 func _get_weights(luck: float) -> Array[float]:
 	# v5.0 luck_shift = luck_stat * 0.6
-	var shift := luck * 0.6
-	return [
+	var shift: float = luck * 0.6
+	var weights: Array[float] = [
 		maxf(2.0, 20.0 - shift * 0.7), # MAJOR_NEG (Base 20)
 		maxf(5.0, 20.0 - shift * 0.3), # MINOR_NEG (Base 20)
 		10.0,                          # NEUTRAL (Base 10)
 		25.0 + shift * 0.4,            # MINOR_POS (Base 25)
 		25.0 + shift * 0.6             # MAJOR_POS (Base 25)
 	]
+	return weights
 
 func _pick_modifier(category: int, _context_type: int) -> RunModifier:
 	# Modifier Table (Simplified for Sprint 1/4 transition)
-	# v5.0 Rule: Modifier impact ±15-25%
-	var mod := RunModifier.new()
+	# v5.0 Rule: Modifier impact ±25%
+	var mod: RunModifier = load("res://scripts/resources/run_modifier.gd").new()
 	match category:
 		0: # MAJOR_NEG
 			mod.name = "Dark Omen"
-			mod.damage_bonus = -0.20
-			mod.description = "-20% Damage, +15% Enemy Damage"
+			mod.damage_bonus = -0.25
+			mod.description = "-25% Damage, +15% Enemy Damage"
 			mod.enemy_hp_multiplier = 1.15
 		1: # MINOR_NEG
 			mod.name = "Cursed Path"
-			mod.damage_bonus = -0.10
-			mod.description = "-10% Gold Gain, +10% Enemy HP"
-			mod.gold_gain_bonus = -0.10
+			mod.damage_bonus = -0.15
+			mod.description = "-15% Gold Gain, +10% Enemy HP"
+			mod.gold_gain_bonus = -0.15
 			mod.enemy_hp_multiplier = 1.10
 		2: # NEUTRAL
 			mod.name = "Steady Hand"
@@ -82,11 +83,11 @@ func _pick_modifier(category: int, _context_type: int) -> RunModifier:
 			mod.description = "No Effect"
 		3: # MINOR_POS
 			mod.name = "Sharp Eye"
-			mod.damage_bonus = 0.10
-			mod.description = "+10% Crit, +8% Damage"
+			mod.damage_bonus = 0.15
+			mod.description = "+15% Crit, +10% Damage"
 		4: # MAJOR_POS
 			mod.name = "War Fury"
-			mod.damage_bonus = 0.20
-			mod.description = "+20% Damage, +15% Attack Speed"
-			mod.attack_speed_bonus = 0.15
+			mod.damage_bonus = 0.25
+			mod.description = "+25% Damage, +20% Attack Speed"
+			mod.attack_speed_bonus = 0.20
 	return mod
