@@ -1,17 +1,19 @@
-extends RefCounted
 class_name DiceRollResultPayload
+extends RefCounted
 
-## Dice roll result event payload
-## Used when dice roll result is available
+## Dice roll result payload (spec-compliant)
+## Contains raw value, category, and generated modifier resource
 
 var stream: GameGlobals.DiceStream
-var result_value: int
-var is_crit: bool
+var raw_value: int
+var category: GameGlobals.RollCategory
+var modifier: RunModifier
 
 func _init(
 	p_stream: GameGlobals.DiceStream,
-	p_result_value: int,
-	p_is_crit: bool
+	p_raw_value: int,
+	p_category: GameGlobals.RollCategory,
+	p_modifier: RunModifier
 ) -> void:
 	assert(
 		p_stream in GameGlobals.DiceStream.values(),
@@ -19,10 +21,21 @@ func _init(
 	)
 	
 	assert(
-		p_result_value >= 1 and p_result_value <= 20,
-		"Roll must be 1-20"
+		p_raw_value >= 1 and p_raw_value <= 20,
+		"Raw value must be 1-20"
+	)
+	
+	assert(
+		p_category in GameGlobals.RollCategory.values(),
+		"Invalid RollCategory"
+	)
+	
+	assert(
+		p_modifier != null,
+		"RunModifier cannot be null"
 	)
 	
 	stream = p_stream
-	result_value = p_result_value
-	is_crit = p_is_crit
+	raw_value = p_raw_value
+	category = p_category
+	modifier = p_modifier

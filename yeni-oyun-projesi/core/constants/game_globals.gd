@@ -7,7 +7,7 @@ extends RefCounted
 
 # Version
 const VERSION: String = "0.1.0"
-const PHASE: String = "Phase 2 - Dice & Modifier System"
+const PHASE: String = "Phase 2C - Dice Category System"
 
 # Stored Dice
 const MAX_STORED_DICE: int = 3
@@ -30,6 +30,18 @@ enum DiceStream {
 	COMBAT,
 	LOOT,
 	STORED_DICE
+}
+
+# ============================================================
+# Roll Category Enumeration
+# ============================================================
+
+enum RollCategory {
+	DISASTER,
+	BAD,
+	NEUTRAL,
+	GOOD,
+	JACKPOT
 }
 
 # ============================================================

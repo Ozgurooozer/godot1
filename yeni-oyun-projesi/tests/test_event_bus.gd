@@ -88,6 +88,30 @@ func test_dice_roll_result_emits_with_payload() -> void:
 	assert_eq(received_payload.result_value, 10)
 	assert_eq(received_payload.stream, GameGlobals.DiceStream.LEVEL)
 
+func test_dice_roll_finalized_emits_with_payload() -> void:
+	var received_payload: FinalDiceResultPayload = null
+	
+	EventBus.dice_roll_finalized.connect(
+		func(payload: FinalDiceResultPayload) -> void:
+			received_payload = payload
+	)
+	
+	var payload: FinalDiceResultPayload = FinalDiceResultPayload.new(
+		GameGlobals.DiceStream.COMBAT,
+		15,
+		18,
+		false
+	)
+	
+	EventBus.dice_roll_finalized.emit(payload)
+	
+	assert_not_null(received_payload)
+	assert_true(received_payload is FinalDiceResultPayload)
+	assert_eq(received_payload.stream, GameGlobals.DiceStream.COMBAT)
+	assert_eq(received_payload.raw_value, 15)
+	assert_eq(received_payload.modified_value, 18)
+	assert_eq(received_payload.is_crit, false)
+
 func test_event_bus_has_all_required_signals() -> void:
 	# Verify all required signals exist
 	assert_has_signal(EventBus, "run_started")
@@ -97,3 +121,4 @@ func test_event_bus_has_all_required_signals() -> void:
 	assert_has_signal(EventBus, "combat_ended")
 	assert_has_signal(EventBus, "dice_roll_requested")
 	assert_has_signal(EventBus, "dice_roll_result")
+	assert_has_signal(EventBus, "dice_roll_finalized")
