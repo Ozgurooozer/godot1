@@ -6,6 +6,7 @@ extends Resource
 ## Stored in RunState and applied during combat/loot calculations
 
 @export var damage_multiplier: float = 1.0
+@export var damage_modifier_pct: float = 0.0
 @export var enemy_hp_multiplier: float = 1.0
 @export var loot_multiplier: float = 1.0
 @export var description: String = ""

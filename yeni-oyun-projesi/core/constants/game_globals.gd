@@ -52,3 +52,13 @@ enum ModifierType {
 	POSITIVE,
 	NEGATIVE
 }
+
+# ============================================================
+# Stat Type Enumeration
+# ============================================================
+
+enum StatType {
+	DAMAGE_PERCENT,
+	HEALTH_PERCENT,
+	LUCK_PERCENT
+}

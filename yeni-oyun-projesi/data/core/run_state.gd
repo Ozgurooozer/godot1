@@ -14,9 +14,13 @@ var combat_context: Dictionary = {}  # Placeholder for Phase 2
 var stored_dice: Array[int] = []
 var active_boons: Array[String] = []
 var run_seed: int = 0
+var active_level_modifier: RunModifier = null
+var active_combat_modifier: RunModifier = null
 
 ## Initialize a new run with seed
 func initialize_run(seed: int) -> void:
+	active_level_modifier = null
+	active_combat_modifier = null
 	run_seed = seed
 	health = 100
 	max_health = 100
@@ -69,3 +73,11 @@ func get_health() -> int:
 ## Get stored dice count (read-only)
 func get_stored_dice_count() -> int:
 	return stored_dice.size()
+
+func get_total_modifier(stat_type: int) -> float:
+	var total_modifier := 0.0
+	for boon_id in active_boons:
+		# Burada boon\'ların modifier değerleri toplanacak. Şimdilik boş bırakıyorum.
+		# Örnek: if boon_id == "BoonOfStrength": total_modifier += 0.1
+		pass
+	return total_modifier

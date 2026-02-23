@@ -1,6 +1,11 @@
 class_name GameManager
 extends Node
 
+var run_domain: RunDomain
+
+func _init():
+	run_domain = RunDomain.new()
+
 # ============================================================
 # GameManager
 # Ultimate authority over run lifecycle.
@@ -35,3 +40,24 @@ func _generate_root_seed() -> int:
 		mixed = 1
 	
 	return mixed
+
+func calculate_final_damage(base_damage: float) -> float:
+    var run_state := run_domain.run_state
+    
+    var level_mod_pct := 0.0
+    var combat_mod_pct := 0.0
+    var boon_mod_pct := run_state.get_total_modifier(StatType.DAMAGE_PERCENT)
+    
+    if run_state.active_level_modifier:
+        level_mod_pct = run_state.active_level_modifier.damage_modifier_pct
+        
+    if run_state.active_combat_modifier:
+        combat_mod_pct = run_state.active_combat_modifier.damage_modifier_pct
+        
+    # Tüm yüzdeler TOPLANIR (Additive)
+    var total_pct_modifier := level_mod_pct + combat_mod_pct + boon_mod_pct
+    
+    # Base ile çarpılır. max() ile hasarın negatife veya 0'a düşmesi (bug) engellenir.
+    var final_damage := base_damage * maxf(0.1, 1.0 + total_pct_modifier)
+    
+    return final_damage
