@@ -1,0 +1,6 @@
+Bu bir test dosyasıdır.
+fsWrite ile oluşturuldu.
+Tarih: 23 Şubat 2026
+Düzenleme: strReplace ile güncellendi ✅
+
+Ek satır: fsAppend ile eklendi 🎉

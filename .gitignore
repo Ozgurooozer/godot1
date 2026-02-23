@@ -1,0 +1,36 @@
+# Godot Executable
+Godot_v*.exe
+Godot_v*_console.exe
+
+# Godot project files
+.godot/
+.kiro/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build artifacts
+node_modules/
+build/
+dist/
+*.o
+*.a
+*.so
+
+# Package managers
+package-lock.json
+yarn.lock
+
+# Test files
+*.test.js
+.nyc_output/
+coverage/
